@@ -20,7 +20,8 @@ export const metadata: Metadata = {
     description: 'The personal page for Amar Graves. Under development.',
   },
   icons: {
-    icon: [{ url: '/favicon.ico', sizes: '32x32' }],
+    icon: [{ url: '/icon.svg', type: 'image/svg+xml' }],
+    apple: [{ url: '/apple-icon.svg', type: 'image/svg+xml' }],
   },
 }
 
