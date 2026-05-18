@@ -170,15 +170,25 @@ jobs:
           node-version: '20'
 
       - name: Install Playwright (chromium only)
-        run: npx --yes playwright@latest install --with-deps chromium
+        run: |
+          # Install the npm package in an isolated dir so we don'\''t touch
+          # the repo'\''s own package.json (the FFC-EX repos use Next.js,
+          # not Playwright as a runtime dep).
+          mkdir -p /tmp/pw
+          cd /tmp/pw
+          npm init -y >/dev/null
+          npm install playwright@latest >/dev/null
+          # Install the browser binaries + OS deps for chromium.
+          npx playwright install --with-deps chromium
 
       - name: Visual check + screenshot
         id: visual
         env:
           URL: ${{ steps.url.outputs.url }}
+        working-directory: /tmp/pw
         run: |
-          mkdir -p artifacts
-          cat > /tmp/visual.js <<'JS'
+          mkdir -p $GITHUB_WORKSPACE/artifacts
+          cat > /tmp/pw/visual.js <<'JS'
           const { chromium } = require('playwright');
           (async () => {
             const url = process.env.URL;
@@ -212,15 +222,16 @@ jobs:
             ].filter(m => m !== "Apache");
             const matches = failureMarkers.filter(m => bodyText.includes(m) || title.includes(m));
 
-            await page.screenshot({ path: 'artifacts/live-fullpage.png', fullPage: true });
-            await page.screenshot({ path: 'artifacts/live-viewport.png', fullPage: false });
+            const artifactsDir = process.env.GITHUB_WORKSPACE + '/artifacts';
+            await page.screenshot({ path: artifactsDir + '/live-fullpage.png', fullPage: true });
+            await page.screenshot({ path: artifactsDir + '/live-viewport.png', fullPage: false });
 
             const summary = {
               url, status, title,
               bodyLength: bodyText.length,
               failureMarkers: matches,
             };
-            require('fs').writeFileSync('artifacts/visual-summary.json', JSON.stringify(summary, null, 2));
+            require('fs').writeFileSync(artifactsDir + '/visual-summary.json', JSON.stringify(summary, null, 2));
             console.log(JSON.stringify(summary, null, 2));
 
             await browser.close();
@@ -240,7 +251,11 @@ jobs:
             console.log('Visual check passed.');
           })();
           JS
-          node /tmp/visual.js
+          # Run from /tmp/pw so `require('playwright')` resolves to the
+          # isolated install we just did. Pass GITHUB_WORKSPACE so the
+          # script writes screenshots back to the repo workspace where
+          # upload-artifact looks for them.
+          GITHUB_WORKSPACE="$GITHUB_WORKSPACE" node /tmp/pw/visual.js
 
       - name: Upload screenshot + summary artifact
         if: always()
