@@ -181,10 +181,21 @@ jobs:
           # Install the browser binaries + OS deps for chromium.
           npx playwright install --with-deps chromium
 
-      - name: Visual check + screenshot
+      - name: Visual check + screenshot + compliance assertions
         id: visual
         env:
           URL: ${{ steps.url.outputs.url }}
+          # Repo variables (Settings -> Secrets and variables -> Actions -> Variables).
+          # Set SMOKE_PLACEHOLDER=true on placeholder/under-construction repos to
+          # skip ALL compliance assertions (footer + policy links + cookie consent).
+          # Real charity sites should leave it unset; the smoke enforces compliance.
+          SMOKE_PLACEHOLDER: ${{ vars.SMOKE_PLACEHOLDER }}
+          # Override: comma-separated list of href substrings the footer must contain.
+          # Default if unset: "/privacy-policy,/tos"
+          SMOKE_REQUIRED_FOOTER_LINKS: ${{ vars.SMOKE_REQUIRED_FOOTER_LINKS }}
+          # Override: set to "false" to skip the cookie-consent check even on real sites
+          # (e.g., site uses NO cookies / NO analytics).
+          SMOKE_REQUIRE_COOKIE_CONSENT: ${{ vars.SMOKE_REQUIRE_COOKIE_CONSENT }}
         working-directory: /tmp/pw
         run: |
           mkdir -p $GITHUB_WORKSPACE/artifacts
@@ -192,6 +203,11 @@ jobs:
           const { chromium } = require('playwright');
           (async () => {
             const url = process.env.URL;
+            const placeholder = String(process.env.SMOKE_PLACEHOLDER || '').toLowerCase() === 'true';
+            const requiredLinks = (process.env.SMOKE_REQUIRED_FOOTER_LINKS || '/privacy-policy,/tos')
+              .split(',').map(s => s.trim()).filter(Boolean);
+            const requireCookieConsent = String(process.env.SMOKE_REQUIRE_COOKIE_CONSENT || 'true').toLowerCase() !== 'false';
+
             const browser = await chromium.launch();
             const ctx = await browser.newContext({
               viewport: { width: 1366, height: 900 },
@@ -210,6 +226,40 @@ jobs:
             const title = await page.title().catch(() => '');
             const bodyText = await page.evaluate(() => document.body && document.body.innerText || '').catch(() => '');
 
+            // ----- Compliance probes (DOM inspection) -----
+            // 1) Footer present: any <footer> or [role="contentinfo"] with non-trivial text.
+            const footer = await page.evaluate(() => {
+              const el = document.querySelector('footer, [role="contentinfo"]');
+              if (!el) return null;
+              return {
+                tag: el.tagName.toLowerCase(),
+                text: (el.innerText || '').slice(0, 4000),
+                hrefs: Array.from(el.querySelectorAll('a[href]')).map(a => a.getAttribute('href') || ''),
+              };
+            }).catch(() => null);
+
+            // 2) Cookie-consent UI visible on first load. Multiple selectors because
+            //    different libraries use different markup. We treat a visible banner OR
+            //    a fixed-position element whose text mentions cookies as a hit.
+            const cookieConsent = await page.evaluate(() => {
+              const selectors = [
+                '[id*="cookie" i]', '[class*="cookie-consent" i]', '[class*="CookieConsent" i]',
+                '[aria-label*="cookie" i]', '[role="dialog"]',
+                '#cookie-banner', '#cookieConsent', '.cookie-banner', '.cc-window',
+              ];
+              for (const sel of selectors) {
+                const el = document.querySelector(sel);
+                if (!el) continue;
+                const rect = el.getBoundingClientRect();
+                if (rect.width < 50 || rect.height < 30) continue;
+                const txt = (el.innerText || '').toLowerCase();
+                if (txt.includes('cookie') || txt.includes('consent') || txt.includes('privacy')) {
+                  return { selector: sel, text: txt.slice(0, 400) };
+                }
+              }
+              return null;
+            }).catch(() => null);
+
             // Known-bad markers that a 200 HTTP check would miss.
             const failureMarkers = [
               "There isn't a GitHub Pages site here", // GH Pages "site not found" page
@@ -226,10 +276,35 @@ jobs:
             await page.screenshot({ path: artifactsDir + '/live-fullpage.png', fullPage: true });
             await page.screenshot({ path: artifactsDir + '/live-viewport.png', fullPage: false });
 
+            // Evaluate compliance failures (unless placeholder mode).
+            const complianceFailures = [];
+            if (!placeholder) {
+              if (!footer) {
+                complianceFailures.push('No <footer> or [role="contentinfo"] element found in rendered page');
+              } else {
+                // Check each required policy link is present in the footer.
+                const missing = requiredLinks.filter(needed =>
+                  !footer.hrefs.some(h => h.includes(needed))
+                );
+                if (missing.length > 0) {
+                  complianceFailures.push(`Footer missing required policy links: ${missing.join(', ')}`);
+                }
+              }
+              if (requireCookieConsent && !cookieConsent) {
+                complianceFailures.push('No cookie-consent UI visible on first load (required because site likely uses analytics/cookies; set SMOKE_REQUIRE_COOKIE_CONSENT=false to skip)');
+              }
+            } else {
+              console.log('Placeholder mode (SMOKE_PLACEHOLDER=true) — skipping compliance assertions.');
+            }
+
             const summary = {
               url, status, title,
               bodyLength: bodyText.length,
               failureMarkers: matches,
+              placeholder,
+              footer: footer ? { tag: footer.tag, hrefCount: footer.hrefs.length, hrefs: footer.hrefs } : null,
+              cookieConsent: cookieConsent ? { selector: cookieConsent.selector, textSnippet: cookieConsent.text } : null,
+              complianceFailures,
             };
             require('fs').writeFileSync(artifactsDir + '/visual-summary.json', JSON.stringify(summary, null, 2));
             console.log(JSON.stringify(summary, null, 2));
@@ -248,7 +323,13 @@ jobs:
               console.error(`::error::Visual: body text is only ${bodyText.length} chars — likely blank page`);
               process.exit(1);
             }
-            console.log('Visual check passed.');
+            if (complianceFailures.length > 0) {
+              for (const f of complianceFailures) {
+                console.error(`::error::Compliance: ${f}`);
+              }
+              process.exit(1);
+            }
+            console.log('Visual + compliance checks passed.');
           })();
           JS
           # Run from /tmp/pw so `require('playwright')` resolves to the
