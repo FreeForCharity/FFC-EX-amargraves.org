@@ -44,26 +44,45 @@ jobs:
           echo "url=$target" >> "$GITHUB_OUTPUT"
           echo "Smoke target: $target"
 
-      - name: Probe live URL over HTTPS (no HTTP fallback)
+      - name: Probe live URL over HTTPS (cert-aware retry)
         id: probe
         env:
           URL: ${{ steps.url.outputs.url }}
         run: |
-          set -euo pipefail
+          set -uo pipefail
           # HTTPS is required. No fallback to HTTP — real users in Chrome
           # cannot reach an HTTP-only site if HSTS is set on the parent
           # domain, and a missing GH Pages cert is a deployment failure.
-          status=$(curl -sI --max-time 30 -L "$URL" -o /dev/null -w "%{http_code}" 2>&1 || echo "000")
+          #
+          # But: after a fresh cname (cutover, custom-domain change, or
+          # https_enforced toggle), Let's Encrypt provisioning takes 5-15
+          # min and HTTPS returns 000 (TLS handshake fail) during that
+          # window. Retry every 30s for up to 20 min before declaring a
+          # real deployment failure.
+          deadline=$(( $(date +%s) + 1200 ))
+          attempt=0
+          status="000"
+          while [ "$(date +%s)" -lt "$deadline" ]; do
+            attempt=$(( attempt + 1 ))
+            status=$(curl -sI --max-time 15 -L "$URL" -o /dev/null -w "%{http_code}" 2>&1 || echo "000")
+            if [ "$status" = "200" ]; then
+              echo "Attempt $attempt: HTTP $status (cert provisioned, site reachable)"
+              break
+            fi
+            echo "Attempt $attempt: HTTP $status — waiting 30s (cert may still be provisioning)"
+            sleep 30
+          done
+
           echo "status=$status" >> "$GITHUB_OUTPUT"
+          echo "attempts=$attempt" >> "$GITHUB_OUTPUT"
 
           if [ "$status" != "200" ]; then
-            echo "::error::HTTPS probe failed: $URL returned HTTP $status"
-            echo "::error::The Pages cert is likely not yet provisioned, or DNS is misconfigured."
-            echo "::error::Check the repo's Pages settings: Settings -> Pages -> Custom domain"
-            echo "::error::and the Cloudflare CNAME record for the host."
+            echo "::error::HTTPS probe failed after $attempt attempts (~20 min): $URL returned HTTP $status"
+            echo "::error::Likely causes: cert provisioning stalled, DNS misconfigured, or apex not pointing at GH Pages."
+            echo "::error::Check Pages settings (Settings -> Pages -> Custom domain) and Cloudflare A/AAAA + www CNAME."
             exit 1
           fi
-          # Save body for next step
+          # Save body for next step (curl-based content checks)
           curl -s --max-time 30 -L "$URL" > /tmp/page.html
           echo "Body length: $(wc -c < /tmp/page.html) bytes"
 
@@ -145,16 +164,104 @@ jobs:
           echo "Checked $checked routes; $fail failed"
           if [ "$fail" -gt 0 ]; then exit 1; fi
 
+      - name: Setup Node for visual check
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Playwright (chromium only)
+        run: npx --yes playwright@latest install --with-deps chromium
+
+      - name: Visual check + screenshot
+        id: visual
+        env:
+          URL: ${{ steps.url.outputs.url }}
+        run: |
+          mkdir -p artifacts
+          cat > /tmp/visual.js <<'JS'
+          const { chromium } = require('playwright');
+          (async () => {
+            const url = process.env.URL;
+            const browser = await chromium.launch();
+            const ctx = await browser.newContext({
+              viewport: { width: 1366, height: 900 },
+              userAgent: 'FFC-Smoke/1.0 (Playwright; +gh-actions)',
+              ignoreHTTPSErrors: false,
+            });
+            const page = await ctx.newPage();
+            page.setDefaultTimeout(45000);
+            let resp = null;
+            try {
+              resp = await page.goto(url, { waitUntil: 'networkidle' });
+            } catch (e) {
+              console.error('navigation error:', e.message);
+            }
+            const status = resp ? resp.status() : 0;
+            const title = await page.title().catch(() => '');
+            const bodyText = await page.evaluate(() => document.body && document.body.innerText || '').catch(() => '');
+
+            // Known-bad markers that a 200 HTTP check would miss.
+            const failureMarkers = [
+              "There isn't a GitHub Pages site here", // GH Pages "site not found" page
+              "Site not found",
+              "404 Not Found",
+              "This page could not be found",
+              "Free For Charity | Reduce Costs, Increase Impact", // FFC template default
+              "Reduce Costs, Increase Impact",
+              "Apache",                                // unlikely in body, kept off
+            ].filter(m => m !== "Apache");
+            const matches = failureMarkers.filter(m => bodyText.includes(m) || title.includes(m));
+
+            await page.screenshot({ path: 'artifacts/live-fullpage.png', fullPage: true });
+            await page.screenshot({ path: 'artifacts/live-viewport.png', fullPage: false });
+
+            const summary = {
+              url, status, title,
+              bodyLength: bodyText.length,
+              failureMarkers: matches,
+            };
+            require('fs').writeFileSync('artifacts/visual-summary.json', JSON.stringify(summary, null, 2));
+            console.log(JSON.stringify(summary, null, 2));
+
+            await browser.close();
+
+            if (status !== 200) {
+              console.error(`::error::Visual: page status ${status} (expected 200)`);
+              process.exit(1);
+            }
+            if (matches.length > 0) {
+              console.error(`::error::Visual: failure markers found in rendered page: ${matches.join(' | ')}`);
+              process.exit(1);
+            }
+            if (bodyText.trim().length < 50) {
+              console.error(`::error::Visual: body text is only ${bodyText.length} chars — likely blank page`);
+              process.exit(1);
+            }
+            console.log('Visual check passed.');
+          })();
+          JS
+          node /tmp/visual.js
+
+      - name: Upload screenshot + summary artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: smoke-visual-${{ github.run_number }}
+          path: artifacts/
+          if-no-files-found: warn
+
       - name: Smoke summary
         if: always()
         env:
           URL: ${{ steps.url.outputs.url }}
           STATUS: ${{ steps.probe.outputs.status }}
+          ATTEMPTS: ${{ steps.probe.outputs.attempts }}
         run: |
           {
             echo "## Post-Deploy Smoke Test"
             echo ""
             echo "- **URL:** $URL"
-            echo "- **HTTPS status:** ${STATUS:-n/a}"
+            echo "- **HTTPS status:** ${STATUS:-n/a} (probed in ${ATTEMPTS:-n/a} attempt(s))"
             echo "- **Job result:** ${{ job.status }}"
+            echo "- **Screenshots:** see \`smoke-visual-${{ github.run_number }}\` artifact"
           } >> "$GITHUB_STEP_SUMMARY"
