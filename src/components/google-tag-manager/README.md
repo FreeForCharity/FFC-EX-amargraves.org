@@ -19,24 +19,29 @@ Google Tag Manager (GTM) is a tag management system that allows you to manage an
 - ✅ Initializes `dataLayer` before GTM loads
 - ✅ Uses Next.js Script component with `afterInteractive` strategy
 - ✅ Includes noscript fallback for accessibility
-- ✅ Integrates with existing cookie consent system
-- ✅ GTM ID hardcoded directly in component (no environment variable needed)
+- ✅ Integrates with the cookie consent system (opt-out analytics model)
+- ✅ GTM ID read from `src/lib/analytics.config.ts` (single source of truth)
 
 ## Configuration
 
 ### Setting Your GTM ID
 
-The GTM container ID is hardcoded directly in the component file. To update it:
+The GTM container ID is read from `src/lib/analytics.config.ts` — the single place all
+tracking IDs live. To update it:
 
-1. Open `src/components/GoogleTagManager/index.tsx`
-2. Update the `GTM_ID` constant with your actual GTM container ID:
+1. Open `src/lib/analytics.config.ts`
+2. Update the `gtmId` value with your actual GTM container ID:
 
-```tsx
-// Google Tag Manager ID - Update this with your actual GTM container ID
-const GTM_ID = 'GTM-XXXXXXX' // Replace with your actual GTM ID
+```ts
+export const analyticsConfig = {
+  gtmId: 'GTM-XXXXXXX', // Replace with your actual GTM ID (e.g., GTM-ABC1234)
+  gaMeasurementId: 'G-XXXXXXXXXX',
+  // ...
+} as const
 ```
 
-Replace `GTM-XXXXXXX` with your actual GTM container ID from Google Tag Manager (e.g., `GTM-ABC1234`).
+The component (`src/components/google-tag-manager/index.tsx`) reads `analyticsConfig.gtmId`,
+so no code change is needed when the ID changes.
 
 ## Usage
 

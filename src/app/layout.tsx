@@ -1,5 +1,7 @@
 import type { Metadata } from 'next'
 import './globals.css'
+import GoogleTagManager, { GoogleTagManagerNoScript } from '@/components/google-tag-manager'
+import CookieConsent from '@/components/cookie-consent'
 
 export const metadata: Metadata = {
   metadataBase: new URL('https://amargraves.org'),
@@ -32,7 +34,14 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body suppressHydrationWarning={true}>{children}</body>
+      <head>
+        <GoogleTagManager />
+      </head>
+      <body suppressHydrationWarning={true}>
+        <GoogleTagManagerNoScript />
+        {children}
+        <CookieConsent />
+      </body>
     </html>
   )
 }
