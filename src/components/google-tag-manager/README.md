@@ -17,26 +17,31 @@ Google Tag Manager (GTM) is a tag management system that allows you to manage an
 
 - ✅ Standard GTM implementation following Google's guidelines
 - ✅ Initializes `dataLayer` before GTM loads
-- ✅ Uses Next.js Script component with `afterInteractive` strategy
+- ✅ Uses Next.js Script component with `lazyOnload` strategy
 - ✅ Includes noscript fallback for accessibility
-- ✅ Integrates with existing cookie consent system
-- ✅ GTM ID hardcoded directly in component (no environment variable needed)
+- ✅ Integrates with the cookie consent system (opt-out analytics model)
+- ✅ GTM ID read from `src/lib/analytics.config.ts` (single source of truth)
 
 ## Configuration
 
 ### Setting Your GTM ID
 
-The GTM container ID is hardcoded directly in the component file. To update it:
+The GTM container ID is read from `src/lib/analytics.config.ts` — the single place all
+tracking IDs live. To update it:
 
-1. Open `src/components/GoogleTagManager/index.tsx`
-2. Update the `GTM_ID` constant with your actual GTM container ID:
+1. Open `src/lib/analytics.config.ts`
+2. Update the `gtmId` value with your actual GTM container ID:
 
-```tsx
-// Google Tag Manager ID - Update this with your actual GTM container ID
-const GTM_ID = 'GTM-XXXXXXX' // Replace with your actual GTM ID
+```ts
+export const analyticsConfig = {
+  gtmId: 'GTM-XXXXXXX', // Replace with your actual GTM ID (e.g., GTM-ABC1234)
+  gaMeasurementId: 'G-XXXXXXXXXX',
+  // ...
+} as const
 ```
 
-Replace `GTM-XXXXXXX` with your actual GTM container ID from Google Tag Manager (e.g., `GTM-ABC1234`).
+The component (`src/components/google-tag-manager/index.tsx`) reads `analyticsConfig.gtmId`,
+so no code change is needed when the ID changes.
 
 ## Usage
 
@@ -64,11 +69,11 @@ export default function RootLayout({ children }) {
 
 ### 1. Script Injection
 
-The GTM script is loaded using Next.js's `Script` component with the `afterInteractive` strategy, which means:
+The GTM script is loaded using Next.js's `Script` component with the `lazyOnload` strategy, which means:
 
-- The script loads after the page becomes interactive
+- The script loads lazily during browser idle time, after the page and its resources have finished loading
 - It doesn't block the initial page load
-- It's optimal for analytics and marketing tags
+- It's optimal for analytics and marketing tags that aren't needed immediately
 
 ### 2. DataLayer Initialization
 
@@ -118,7 +123,7 @@ The site automatically deploys to GitHub Pages via `.github/workflows/nextjs.yml
 1. **Custom domain**: https://www.ffcworkingsite1.org
 2. **GitHub Pages**: https://freeforcharity.github.io/FFC_Single_Page_Template/
 
-The GTM ID is hardcoded in the component, so no additional configuration is needed for deployment.
+The GTM ID is read from `src/lib/analytics.config.ts`, so no additional configuration is needed for deployment.
 
 ### Local Development
 
@@ -163,19 +168,19 @@ In GTM, use Preview mode to:
 
 ## Security Considerations
 
-- ✅ GTM ID is hardcoded in the component (visible in source code)
+- ✅ GTM ID is read from `src/lib/analytics.config.ts` (visible in source code)
 - ✅ Script uses official Google CDN
 - ✅ No sensitive data is sent to GTM by default
 - ✅ Integrates with cookie consent for privacy compliance
 
-**Note**: Since the GTM ID is hardcoded and visible in the source code, ensure you're using proper GTM security features like allowlists and container permissions to prevent unauthorized modifications.
+**Note**: Since the GTM ID lives in `src/lib/analytics.config.ts` and is visible in the source code, ensure you're using proper GTM security features like allowlists and container permissions to prevent unauthorized modifications.
 
 ## Performance
 
 The GTM implementation is optimized for performance:
 
 - Uses Next.js Script component for optimal loading
-- Loads after page becomes interactive (doesn't block rendering)
+- Loads lazily during browser idle time (doesn't block rendering)
 - DataLayer is initialized early to capture events
 - Minimal overhead (~7-10KB for GTM container)
 
@@ -183,7 +188,7 @@ The GTM implementation is optimized for performance:
 
 ### GTM Not Loading
 
-1. Verify the GTM ID in `src/components/GoogleTagManager/index.tsx` is correct
+1. Verify the GTM ID in `src/lib/analytics.config.ts` is correct
 
 2. Check GTM ID format (should be `GTM-XXXXXXX`)
 
@@ -209,10 +214,13 @@ Note: Ad blockers may prevent GTM from loading. This is expected behavior and af
 
 To change the GTM container ID:
 
-1. Open `src/components/GoogleTagManager/index.tsx`
-2. Update the `GTM_ID` constant:
-   ```tsx
-   const GTM_ID = 'GTM-NEW1234' // Your new GTM ID
+1. Open `src/lib/analytics.config.ts`
+2. Update the `gtmId` value:
+   ```ts
+   export const analyticsConfig = {
+     gtmId: 'GTM-NEW1234', // Your new GTM ID
+     // ...
+   } as const
    ```
 3. Commit and push the changes
 4. The changes will be deployed automatically via GitHub Actions

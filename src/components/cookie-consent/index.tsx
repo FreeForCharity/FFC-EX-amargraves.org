@@ -3,21 +3,17 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import Link from 'next/link'
 
-// Environment variables for tracking IDs (replace with actual values)
-const GA_MEASUREMENT_ID = process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID || 'G-XXXXXXXXXX'
-const META_PIXEL_ID = process.env.NEXT_PUBLIC_META_PIXEL_ID || 'XXXXXXXXXXXXXXX'
-const CLARITY_PROJECT_ID = process.env.NEXT_PUBLIC_CLARITY_PROJECT_ID || 'XXXXXXXXXX'
+// Opt-out analytics model. GA4 loads through this site's Google Tag Manager container
+// (src/lib/analytics.config.ts + src/components/google-tag-manager) and runs by default.
+// This banner does NOT inject its own analytics scripts (that would double-count). Its job
+// is to let a visitor DECLINE: on decline it sends a Google Consent Mode update
+// (analytics_storage: 'denied') — which GA4 honours natively, stopping cookie use going
+// forward — and deletes existing analytics cookies. Accepting re-grants analytics_storage.
 
-// Define type for GTM dataLayer events
-interface DataLayerEvent {
-  event: string
-  [key: string]: string | number | boolean | undefined
-}
-
-// Extend Window interface to include dataLayer and openCookiePreferences
+// The GTM dataLayer holds heterogeneous entries (event objects and gtag command arrays).
 declare global {
   interface Window {
-    dataLayer: DataLayerEvent[]
+    dataLayer?: unknown[]
     openCookiePreferences?: () => void
   }
 }
@@ -26,7 +22,59 @@ interface CookiePreferences {
   necessary: boolean
   functional: boolean
   analytics: boolean
-  marketing: boolean
+}
+
+// Send a Google Consent Mode update. Pushing the gtag command array is read by GA4/GTM
+// the same as gtag('consent', 'update', ...). GA4 respects analytics_storage natively, so
+// this genuinely turns GA cookie use on/off for this browser.
+function updateConsentMode(analyticsGranted: boolean) {
+  if (typeof window === 'undefined') return
+  const dataLayer = (window.dataLayer = window.dataLayer || [])
+  const gtag = (...args: unknown[]) => dataLayer.push(args)
+  gtag('consent', 'update', {
+    analytics_storage: analyticsGranted ? 'granted' : 'denied',
+    ad_storage: 'denied',
+    ad_user_data: 'denied',
+    ad_personalization: 'denied',
+  })
+}
+
+// Read the saved consent from localStorage, falling back to the `cookie-consent`
+// cookie. The cookie is the durable source of truth when localStorage is cleared
+// independently (or unavailable in private mode), so the banner does not reappear
+// for a visitor who has already chosen.
+function readStoredConsent(): string | null {
+  try {
+    const ls = localStorage.getItem('cookie-consent')
+    if (ls) return ls
+  } catch {
+    // localStorage unavailable — fall through to the cookie
+  }
+  if (typeof document === 'undefined') return null
+  // Cookies are separated by ';' with optional whitespace — split on ';' then trim,
+  // so parsing works even when there is no space after the separator.
+  const entry = document.cookie
+    .split(';')
+    .map((c) => c.trim())
+    .find((c) => c.startsWith('cookie-consent='))
+  if (!entry) return null
+  try {
+    return decodeURIComponent(entry.slice('cookie-consent='.length))
+  } catch {
+    return null
+  }
+}
+
+// Remove a corrupted/invalid stored consent so it stops re-triggering the banner path.
+function clearStoredConsent() {
+  try {
+    localStorage.removeItem('cookie-consent')
+  } catch {
+    // ignore — localStorage may be unavailable
+  }
+  if (typeof document !== 'undefined') {
+    document.cookie = 'cookie-consent=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;'
+  }
 }
 
 export default function CookieConsent() {
@@ -34,156 +82,68 @@ export default function CookieConsent() {
   const [showPreferences, setShowPreferences] = useState(false)
   const [preferences, setPreferences] = useState<CookiePreferences>({
     necessary: true, // Always true, cannot be changed
-    functional: true, // Always true, cannot be changed - includes Zeffy donation forms
-    analytics: false,
-    marketing: false,
+    functional: true, // Always true, cannot be changed (remembers site preferences, e.g. your cookie choices)
+    // Opt-out model: analytics is ON by default. It only becomes false when the visitor
+    // explicitly declines, so the Customize modal reflects the real running state and a
+    // no-op "Save" does not silently opt the visitor out.
+    analytics: true,
   })
   const [savedPreferencesBackup, setSavedPreferencesBackup] =
     useState<CookiePreferences>(preferences)
   const modalRef = useRef<HTMLDivElement>(null)
   const previousFocusRef = useRef<HTMLElement | null>(null)
 
-  const loadGoogleAnalytics = useCallback(() => {
-    if (
-      typeof window !== 'undefined' &&
-      !document.querySelector('script[src*="googletagmanager.com/gtag"]')
-    ) {
-      const gaScript = document.createElement('script')
-      gaScript.async = true
-      gaScript.src = `https://www.googletagmanager.com/gtag/js?id=${GA_MEASUREMENT_ID}`
-      document.head.appendChild(gaScript)
-
-      const gaConfigScript = document.createElement('script')
-      const secureFlag =
-        typeof window !== 'undefined' && window.location.protocol === 'https:' ? ';Secure' : ''
-      gaConfigScript.textContent = `
-        window.dataLayer = window.dataLayer || [];
-        function gtag(){dataLayer.push(arguments);}
-        gtag('js', new Date());
-        gtag('config', '${GA_MEASUREMENT_ID}', {
-          'anonymize_ip': true,
-          'cookie_flags': 'SameSite=Lax${secureFlag}'
-        });
-      `
-      document.head.appendChild(gaConfigScript)
-    }
-  }, [])
-
-  const loadMetaPixel = useCallback(() => {
-    if (typeof window !== 'undefined' && !document.querySelector('script[src*="fbevents.js"]')) {
-      const fbScript = document.createElement('script')
-      fbScript.textContent = `
-        !function(f,b,e,v,n,t,s)
-        {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
-        n.callMethod.apply(n,arguments):n.queue.push(arguments)};
-        if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
-        n.queue=[];t=b.createElement(e);t.async=!0;
-        t.src=v;s=b.getElementsByTagName(e)[0];
-        s.parentNode.insertBefore(t,s)}(window, document,'script',
-        'https://connect.facebook.net/en_US/fbevents.js');
-        fbq('init', '${META_PIXEL_ID}');
-        fbq('track', 'PageView');
-      `
-      document.head.appendChild(fbScript)
-
-      const fbNoScript = document.createElement('noscript')
-      const img = document.createElement('img')
-      img.height = 1
-      img.width = 1
-      img.style.display = 'none'
-      img.src = `https://www.facebook.com/tr?id=${META_PIXEL_ID}&ev=PageView&noscript=1`
-      fbNoScript.appendChild(img)
-      document.body.appendChild(fbNoScript)
-    }
-  }, [])
-
-  const loadMicrosoftClarity = useCallback(() => {
-    if (typeof window !== 'undefined' && !document.querySelector('script[src*="clarity.ms"]')) {
-      const clarityScript = document.createElement('script')
-      clarityScript.textContent = `
-        (function(c,l,a,r,i,t,y){
-          c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};
-          t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;
-          y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);
-        })(window, document, "clarity", "script", "${CLARITY_PROJECT_ID}");
-      `
-      document.head.appendChild(clarityScript)
-    }
-  }, [])
-
   const deleteAnalyticsCookies = useCallback(() => {
-    // List of static cookie names to delete
-    const cookiesToDelete = ['_ga', '_gid', '_fbp', 'fr', '_clck', '_clsk']
+    const host = window.location.hostname
+    // Expire a cookie across the domain variants GA may have used: no domain,
+    // the exact host, and the leading-dot host (GA sets _ga with domain=.example.org).
+    const expire = (name: string) => {
+      const stem = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/`
+      document.cookie = `${stem};`
+      document.cookie = `${stem}; domain=${host};`
+      document.cookie = `${stem}; domain=.${host};`
+    }
 
-    // Delete static cookies
-    cookiesToDelete.forEach((name) => {
-      // Delete for current domain
-      document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`
-      // Also try to delete with domain specification
-      document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=${window.location.hostname};`
-    })
+    // Static analytics/marketing cookie names
+    ;['_ga', '_gid', '_fbp', 'fr', '_clck', '_clsk'].forEach(expire)
 
-    // Dynamically delete all cookies matching _ga_* (e.g., _ga_G-XXXXXXXXXX)
+    // Dynamically expire all cookies matching _ga_* (e.g., _ga_G-XXXXXXXXXX)
     if (typeof document !== 'undefined') {
       document.cookie.split(';').forEach((cookie) => {
         const cookieName = cookie.split('=')[0].trim()
-        if (cookieName.startsWith('_ga_')) {
-          // Delete for current domain
-          document.cookie = `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`
-          // Also try to delete with domain specification
-          document.cookie = `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=${window.location.hostname};`
-        }
+        if (cookieName.startsWith('_ga_')) expire(cookieName)
       })
     }
   }, [])
 
   const applyConsent = useCallback(
-    (prefs: CookiePreferences, previousPrefs?: CookiePreferences) => {
-      // Set a cookie to indicate consent status with Secure flag (only on HTTPS)
+    (prefs: CookiePreferences) => {
+      // Persist the choice (Secure only on HTTPS)
       const cookieValue = JSON.stringify(prefs)
       const secureFlag =
         typeof window !== 'undefined' && window.location.protocol === 'https:' ? '; Secure' : ''
       document.cookie = `cookie-consent=${encodeURIComponent(cookieValue)}; path=/; max-age=31536000; SameSite=Lax${secureFlag}`
 
-      // Check if consent was withdrawn and delete cookies if needed
-      if (previousPrefs) {
-        if (
-          (previousPrefs.analytics && !prefs.analytics) ||
-          (previousPrefs.marketing && !prefs.marketing)
-        ) {
-          deleteAnalyticsCookies()
-        }
+      // Whenever analytics is not consented — a fresh decline, a withdrawal, or a
+      // pre-existing _ga from before consent existed — clear the analytics cookies.
+      if (!prefs.analytics) {
+        deleteAnalyticsCookies()
       }
 
-      // Push consent update to GTM dataLayer
-      if (typeof window !== 'undefined') {
-        window.dataLayer = window.dataLayer || []
-        window.dataLayer.push({
-          event: 'consent_update',
-          functional_consent: prefs.functional ? 'granted' : 'denied',
-          analytics_consent: prefs.analytics ? 'granted' : 'denied',
-          marketing_consent: prefs.marketing ? 'granted' : 'denied',
-        })
-      }
-
-      // Load scripts based on consent independently
-      if (prefs.analytics) {
-        loadGoogleAnalytics()
-        loadMicrosoftClarity()
-      }
-      if (prefs.marketing) {
-        loadMetaPixel()
-      }
+      // Tell GA4 (via GTM) whether analytics is allowed. No script injection here — GA4
+      // fires inside the GTM container; injecting gtag would double-count.
+      updateConsentMode(prefs.analytics)
     },
-    [deleteAnalyticsCookies, loadGoogleAnalytics, loadMetaPixel, loadMicrosoftClarity]
+    [deleteAnalyticsCookies]
   )
 
   // Helper to load preferences from localStorage and update state
   const loadPreferencesFromLocalStorage = useCallback(
     (showBannerIfMissing = true) => {
       try {
-        const consent = localStorage.getItem('cookie-consent')
+        const consent = readStoredConsent()
         if (!consent) {
+          // No stored choice yet: show the banner (analytics runs by default until declined).
           if (showBannerIfMissing) setShowBanner(true)
           return
         }
@@ -191,6 +151,8 @@ export default function CookieConsent() {
         try {
           savedPreferences = JSON.parse(consent)
         } catch {
+          // Corrupted value — clear it so we don't hit this path every load.
+          clearStoredConsent()
           if (showBannerIfMissing) setShowBanner(true)
           return
         }
@@ -200,24 +162,25 @@ export default function CookieConsent() {
           typeof savedPreferences === 'object' &&
           savedPreferences !== null &&
           typeof savedPreferences.necessary === 'boolean' &&
-          typeof savedPreferences.analytics === 'boolean' &&
-          typeof savedPreferences.marketing === 'boolean'
+          typeof savedPreferences.analytics === 'boolean'
         ) {
-          // Ensure functional is always true (for backward compatibility with old saved preferences)
-          // Create a new object to avoid mutation
+          // Force necessary + functional true (they are always-on); guards against
+          // corrupted/old saved data that stored them as false.
           const updatedPreferences: CookiePreferences = {
             ...savedPreferences,
+            necessary: true,
             functional: true,
           }
           setPreferences(updatedPreferences)
           setSavedPreferencesBackup(updatedPreferences)
           applyConsent(updatedPreferences)
         } else {
-          // Invalid data, show banner again
+          // Valid JSON but wrong shape — clear it and show the banner again.
+          clearStoredConsent()
           if (showBannerIfMissing) setShowBanner(true)
         }
       } catch {
-        // If localStorage is unavailable or data is corrupted, show banner
+        // If localStorage is unavailable (e.g. private mode), just show the banner.
         if (showBannerIfMissing) setShowBanner(true)
       }
     },
@@ -255,24 +218,48 @@ export default function CookieConsent() {
       // Store the previously focused element
       previousFocusRef.current = document.activeElement as HTMLElement
 
+      const modal = modalRef.current
+      const getFocusable = () =>
+        Array.from(
+          modal.querySelectorAll<HTMLElement>(
+            'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+          )
+        ).filter((el) => !el.hasAttribute('disabled'))
+
       // Focus the first focusable element in the modal
-      const focusableElements = modalRef.current.querySelectorAll(
-        'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
-      )
-      if (focusableElements.length > 0) {
-        ;(focusableElements[0] as HTMLElement).focus()
+      const focusable = getFocusable()
+      if (focusable.length > 0) {
+        focusable[0].focus()
       }
 
-      // Handle Escape key
-      const handleEscape = (e: KeyboardEvent) => {
+      // Handle Escape (close) and Tab (trap focus within the dialog)
+      const handleKeyDown = (e: KeyboardEvent) => {
         if (e.key === 'Escape') {
           handleCancelPreferences()
+          return
+        }
+        if (e.key !== 'Tab') return
+        const items = getFocusable()
+        if (items.length === 0) return
+        const first = items[0]
+        const last = items[items.length - 1]
+        const active = document.activeElement
+        if (e.shiftKey && active === first) {
+          e.preventDefault()
+          last.focus()
+        } else if (!e.shiftKey && active === last) {
+          e.preventDefault()
+          first.focus()
+        } else if (!modal.contains(active)) {
+          // Focus escaped the dialog (e.g. from the page behind) — pull it back.
+          e.preventDefault()
+          first.focus()
         }
       }
-      document.addEventListener('keydown', handleEscape)
+      document.addEventListener('keydown', handleKeyDown)
 
       return () => {
-        document.removeEventListener('keydown', handleEscape)
+        document.removeEventListener('keydown', handleKeyDown)
         // Restore focus when modal closes
         if (previousFocusRef.current) {
           previousFocusRef.current.focus()
@@ -286,7 +273,6 @@ export default function CookieConsent() {
       necessary: true,
       functional: true,
       analytics: true,
-      marketing: true,
     }
     setPreferences(allAccepted)
     try {
@@ -295,7 +281,7 @@ export default function CookieConsent() {
       // If localStorage is unavailable, continue anyway
       console.warn('Unable to save preferences to localStorage:', e)
     }
-    applyConsent(allAccepted, savedPreferencesBackup)
+    applyConsent(allAccepted)
     setSavedPreferencesBackup(allAccepted)
     setShowBanner(false)
   }
@@ -303,9 +289,8 @@ export default function CookieConsent() {
   const handleDeclineAll = () => {
     const onlyNecessary: CookiePreferences = {
       necessary: true,
-      functional: true, // Functional cookies (Zeffy) are always enabled for donations
+      functional: true, // Always on: core functional cookies (remembers site preferences)
       analytics: false,
-      marketing: false,
     }
     setPreferences(onlyNecessary)
     try {
@@ -315,10 +300,8 @@ export default function CookieConsent() {
       console.warn('Unable to save preferences to localStorage:', e)
     }
 
-    // Delete third-party cookies when consent is withdrawn
-    deleteAnalyticsCookies()
-
-    applyConsent(onlyNecessary, savedPreferencesBackup)
+    // applyConsent() deletes analytics cookies whenever analytics is not consented.
+    applyConsent(onlyNecessary)
     setSavedPreferencesBackup(onlyNecessary)
     setShowBanner(false)
   }
@@ -330,7 +313,7 @@ export default function CookieConsent() {
       // If localStorage is unavailable, continue anyway
       console.warn('Unable to save preferences to localStorage:', e)
     }
-    applyConsent(preferences, savedPreferencesBackup)
+    applyConsent(preferences)
     setSavedPreferencesBackup(preferences)
     setShowBanner(false)
     setShowPreferences(false)
@@ -349,7 +332,7 @@ export default function CookieConsent() {
   if (showPreferences) {
     return (
       <div
-        className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4"
+        className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
         role="dialog"
         aria-modal="true"
         aria-labelledby="cookie-preferences-title"
@@ -409,13 +392,8 @@ export default function CookieConsent() {
                 </div>
               </div>
               <p className="text-sm text-gray-600 mb-2">
-                These cookies enable enhanced functionality and features that are essential for our
-                core services. This includes our donation processing and application form systems
-                which require cookies to function properly.
-              </p>
-              <p className="text-xs text-gray-500">
-                Services: Zeffy (Donation Processing), Microsoft Forms (Application Forms - may
-                include HubSpot analytics)
+                These cookies remember your preferences — such as your cookie choices — and enable
+                core site functionality. They do not track you across other sites.
               </p>
             </div>
 
@@ -428,7 +406,7 @@ export default function CookieConsent() {
                     type="checkbox"
                     checked={preferences.analytics}
                     onChange={(e) =>
-                      setPreferences({ ...preferences, analytics: e.target.checked })
+                      setPreferences((prev) => ({ ...prev, analytics: e.target.checked }))
                     }
                     className="sr-only peer"
                     aria-label="Enable analytics cookies"
@@ -438,34 +416,9 @@ export default function CookieConsent() {
               </div>
               <p className="text-sm text-gray-600 mb-2">
                 These cookies help us understand how visitors interact with our website by
-                collecting and reporting information anonymously. We use Google Analytics and
-                Microsoft Clarity.
+                collecting and reporting information anonymously. We use Google Analytics.
               </p>
-              <p className="text-xs text-gray-500">Services: Google Analytics, Microsoft Clarity</p>
-            </div>
-
-            {/* Marketing Cookies */}
-            <div className="mb-6 p-4 bg-gray-50 rounded-lg">
-              <div className="flex items-center justify-between mb-2">
-                <h3 className="text-lg font-semibold text-gray-900">Marketing Cookies</h3>
-                <label className="relative inline-flex items-center cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={preferences.marketing}
-                    onChange={(e) =>
-                      setPreferences({ ...preferences, marketing: e.target.checked })
-                    }
-                    className="sr-only peer"
-                    aria-label="Enable marketing cookies"
-                  />
-                  <div className="w-11 h-6 bg-gray-300 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
-                </label>
-              </div>
-              <p className="text-sm text-gray-600 mb-2">
-                These cookies are used to track visitors across websites. The intention is to
-                display ads that are relevant and engaging for the individual user.
-              </p>
-              <p className="text-xs text-gray-500">Services: Meta Pixel (Facebook)</p>
+              <p className="text-xs text-gray-500">Services: Google Analytics</p>
             </div>
 
             <div className="flex flex-col sm:flex-row gap-3 mt-6">
@@ -499,10 +452,9 @@ export default function CookieConsent() {
           <div className="flex-1">
             <h3 className="text-lg font-bold text-gray-900 mb-2">We Value Your Privacy</h3>
             <p className="text-sm text-gray-600 mb-3">
-              We use cookies to improve your experience on our site, analyze traffic, and enable
-              certain features. By clicking &quot;Accept All&quot;, you consent to our use of
-              cookies for analytics and marketing purposes. You can manage your preferences or
-              decline non-essential cookies.
+              We use cookies to improve your experience on our site and to understand how it is
+              used. By clicking &quot;Accept All&quot;, you consent to our use of cookies for
+              analytics. You can manage your preferences or decline non-essential cookies.
             </p>
             <div className="flex items-center gap-4 text-xs text-gray-500">
               <Link href="/privacy-policy" className="text-blue-600 hover:underline">
