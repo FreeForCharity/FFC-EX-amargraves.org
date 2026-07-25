@@ -1,8 +1,8 @@
 import type { Metadata } from 'next'
 
 export const metadata: Metadata = {
-  title: 'Privacy Policy | Free For Charity',
-  description: 'Privacy Policy for Free For Charity website',
+  title: 'Privacy Policy | Amar Graves',
+  description: 'Privacy Policy for Amar Graves',
 }
 
 export default function PrivacyPolicy() {
