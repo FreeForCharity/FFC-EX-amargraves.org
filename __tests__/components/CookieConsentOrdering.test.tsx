@@ -5,19 +5,19 @@ import { render, waitFor } from '@testing-library/react'
 // direct GA4 loader from injecting anything — give this suite a real-looking
 // ID so the injection (and its ordering against the consent update) is
 // observable. This fork reads the ID from the environment at module scope,
-// so set it BEFORE the component module is first evaluated (jest hoists
-// `import` statements, which is why the component is required lazily here).
-let CookieConsent: React.ComponentType
+// so set it BEFORE the component module is first evaluated: jest hoists the
+// `import` statements above, so the assignment below runs after React and
+// react-dom are loaded but before the component module is, and the lazy
+// requireActual then evaluates the component in the SAME module registry
+// (no jest.resetModules — that would hand the component a second copy of
+// React and break its hooks).
+process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID = 'G-TEST1234567'
 
-beforeAll(() => {
-  process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID = 'G-TEST1234567'
-  jest.resetModules()
-  CookieConsent = (
-    jest.requireActual('../../src/components/cookie-consent') as {
-      default: React.ComponentType
-    }
-  ).default
-})
+const CookieConsent = (
+  jest.requireActual('../../src/components/cookie-consent') as {
+    default: React.ComponentType
+  }
+).default
 
 afterAll(() => {
   delete process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID
