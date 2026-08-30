@@ -223,8 +223,10 @@ export default function CookiePolicy() {
             </p>
             <p className="text-sm text-[#666] mb-2">
               Everywhere else, Google Analytics cookies are set from your first visit. You can turn
-              them off at any time using the Cookie Preferences link in our footer, and we will
-              delete the cookies listed below when you do.
+              them off at any time using the site&apos;s Cookie Preferences control (shown in the
+              footer once the consent banner is enabled), and we will delete the cookies listed
+              below when you do. While this site remains a pre-launch placeholder, no Google tags
+              are loaded at all, so no analytics cookies are set in any region.
             </p>
             <p className="text-sm text-[#666] mb-2">
               Which of these rules applies to your visit is determined by Google from your IP
@@ -415,9 +417,9 @@ export default function CookiePolicy() {
             </li>
           </ul>
           <p className="text-[14px] text-[#666] pb-[10px] leading-[24px] font-[500]">
-            You can change your mind at any time: the Cookie Preferences link in the footer reopens
-            these choices, and withdrawing consent deletes the analytics and marketing cookies this
-            site set.
+            You can change your mind at any time once the consent banner is enabled: the site&apos;s
+            Cookie Preferences control reopens these choices, and withdrawing consent deletes the
+            analytics and marketing cookies this site set.
           </p>
 
           <p className="text-[14px] text-[#666] pb-[10px] leading-[24px] font-[500] mt-[1em]">
@@ -494,9 +496,10 @@ export default function CookiePolicy() {
             CCPA/CPRA, so there is nothing for those signals to opt out of. In the EEA, the UK, and
             Switzerland, analytics cookies stay off until you opt in through the consent banner;
             everywhere else they are set from your first visit, and you can turn them off at any
-            time via the Cookie Preferences link in the footer — we delete the cookies when you do.
-            Session recording (Microsoft Clarity) and marketing (Meta Pixel) never load without your
-            explicit opt-in, anywhere in the world.
+            time via the site&apos;s Cookie Preferences control (shown in the footer once the
+            consent banner is enabled) — we delete the cookies when you do. Session recording
+            (Microsoft Clarity) and marketing (Meta Pixel) never load without your explicit opt-in,
+            anywhere in the world.
           </p>
 
           {/* Section 6 */}

@@ -360,9 +360,11 @@ export default function PrivacyPolicy() {
               no cookies and read no identifiers until you accept through the cookie consent banner
               — until then only aggregate, cookieless measurement takes place. Session recording
               (Microsoft Clarity) and marketing (Meta Pixel) load only after you opt in. You can
-              withdraw consent at any time via the Cookie Preferences link in the footer; this site
-              then deletes the tracking cookies it set, Google&apos;s tags return to the cookieless
-              state, and Clarity and the Meta Pixel stop loading from your next page view.
+              withdraw consent at any time via the site&apos;s Cookie Preferences control (shown in
+              the footer once the consent banner is enabled); this site then deletes the tracking
+              cookies it set, Google&apos;s tags return to the cookieless state, and Clarity and the
+              Meta Pixel stop loading from your next page view. While this site remains a pre-launch
+              placeholder, no Google tags are loaded at all.
             </li>
             <li className="text-[14px] text-[#666] leading-[24px] font-[500]">
               <strong>Legitimate interests:</strong> Operating, securing, and improving this website
@@ -426,9 +428,10 @@ export default function PrivacyPolicy() {
             signals. We do not sell or share personal information as defined by the CCPA/CPRA, so
             there is nothing for those signals to opt out of. Analytics cookies are set
             automatically for visitors outside the EEA, the UK, and Switzerland; any visitor can
-            turn them off at any time via the Cookie Preferences link in the footer, and we delete
-            the cookies when you do. Session recording (Microsoft Clarity) and marketing (Meta
-            Pixel) never load without your explicit opt-in, anywhere in the world.
+            turn them off at any time via the site&apos;s Cookie Preferences control (shown in the
+            footer once the consent banner is enabled), and we delete the cookies when you do.
+            Session recording (Microsoft Clarity) and marketing (Meta Pixel) never load without your
+            explicit opt-in, anywhere in the world.
           </p>
           <p className="text-[14px] text-[#666] pb-[10px] leading-[24px] font-[500]">
             <strong>Exercising your rights.</strong> Submit a request to{' '}
