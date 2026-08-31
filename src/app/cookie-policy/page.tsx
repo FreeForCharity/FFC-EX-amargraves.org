@@ -35,6 +35,14 @@ export default function CookiePolicy() {
             Persistent cookies remain on your device after you close your browser, while session
             cookies are deleted when you close your browser.
           </p>
+          <p className="text-[14px] text-[#666] pb-[10px] leading-[24px] font-[500]">
+            <strong>What this site does today.</strong> Analytics and marketing tags are not
+            currently enabled here. This site loads no Google Analytics, no Microsoft Clarity and no
+            Meta Pixel; it sets none of the analytics or advertising cookies described below; and it
+            shows no cookie consent banner. Everything that follows describes how those cookies and
+            your choices about them would work once analytics is enabled here, so that turning it on
+            does not also require rewriting this page.
+          </p>
 
           {/* Section 2 */}
           <ol className="list-decimal list-inside pb-[1em]" start={2}>
