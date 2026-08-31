@@ -45,11 +45,14 @@ export default function CookieConsent() {
   const modalRef = useRef<HTMLDivElement>(null)
   const previousFocusRef = useRef<HTMLElement | null>(null)
 
-  // Google tags speak Consent Mode, so loading is NOT gated on the
-  // analytics toggle: the direct GA4 tag loads on every pageview (like GTM
-  // in the layout) and the Consent Mode defaults/updates decide whether it
-  // may use cookies. With the shipped placeholder ID this loader is inert —
-  // fleet sites get GA4 delivered through GTM instead.
+  // Google tags speak Consent Mode, so loading is NOT gated on the analytics
+  // toggle: a configured GA4 tag would load on every pageview and the Consent
+  // Mode defaults/updates would decide whether it may use cookies.
+  //
+  // Nothing loads here today. The ID above is still the placeholder, and —
+  // unlike most FFC sites, which deliver GA4 through a Google Tag Manager
+  // container mounted in the layout — this site mounts no GTM container
+  // either. There is no Google tag on the page at all.
   const loadGoogleAnalytics = useCallback(() => {
     if (!isConfigured(GA_MEASUREMENT_ID)) return
     if (
