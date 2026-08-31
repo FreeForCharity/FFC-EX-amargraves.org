@@ -87,7 +87,9 @@ export const CONSENT_WAIT_FOR_UPDATE_MS = 500
 /**
  * The inline bootstrap that must execute BEFORE any Google tag loads.
  *
- * Emitted into <head> in the root layout, ahead of <GoogleTagManager />.
+ * Emitted into <head> in the root layout, ahead of any Google tag.
+ * This fork's layout currently mounts none — the defaults are inert
+ * groundwork, in place first for whenever GTM or GA4 is wired in.
  * Two `consent default` calls, in Google's documented order: the
  * region-scoped denial first, then the global grant. Region-specific
  * settings always take precedence over the unscoped one, so EEA/UK/CH
@@ -102,11 +104,12 @@ export const CONSENT_WAIT_FOR_UPDATE_MS = 500
  * Deliberate deviation from the freeforcharity reference: `wait_for_update`
  * is set on BOTH default calls here, not just the region-scoped denial.
  * There, GTM loads behind the consent component, so a stored choice is
- * always restored before any Google tag initialises; here GTM loads from
- * the layout, so without a wait on the unscoped grant it could initialise
- * under the granted default before React hydrates and restores a returning
- * non-EEA visitor's stored DECLINE. The wait gives the stored-choice
- * restore a window before tags evaluate consent, in every region.
+ * always restored before any Google tag initialises. This fork mounts no
+ * Google tag yet, but if one is ever added to the layout it would load
+ * ahead of React — and without a wait on the unscoped grant it could
+ * initialise under the granted default before hydration restores a
+ * returning non-EEA visitor's stored DECLINE. Setting the wait now means
+ * that wiring cannot introduce the race later.
  *
  * Declared as a function declaration so `gtag` lands on `window` and every
  * later caller (the GA4 loader, the consent banner) shares one queue.

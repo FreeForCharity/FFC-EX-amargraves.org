@@ -72,10 +72,12 @@ describe('CONSENT_MODE_BOOTSTRAP', () => {
   })
 
   it('sets wait_for_update on BOTH default calls (unscoped grant included)', () => {
-    // Deliberate deviation from the reference: GTM loads from the layout
-    // here (not behind the consent component), so the unscoped grant also
-    // needs a wait window or a returning non-EEA visitor's stored decline
-    // could be restored after the tags already evaluated consent.
+    // Deliberate deviation from the reference, where only the region-scoped
+    // denial carries a wait. This fork's layout mounts no Google tag today,
+    // but one added there later would load ahead of React rather than behind
+    // the consent component — so the unscoped grant needs a wait window too,
+    // or a returning non-EEA visitor's stored decline could be restored only
+    // after the tags had already evaluated consent.
     const waitRe = new RegExp(`'wait_for_update': ${CONSENT_WAIT_FOR_UPDATE_MS}`, 'g')
     const occurrences = CONSENT_MODE_BOOTSTRAP.match(waitRe) ?? []
     expect(occurrences).toHaveLength(2)
