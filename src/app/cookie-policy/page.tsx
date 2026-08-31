@@ -403,7 +403,12 @@ export default function CookiePolicy() {
             <strong>4.1 Cookie Consent Banner</strong>
           </p>
           <p className="text-[14px] text-[#666] pb-[10px] leading-[24px] font-[500]">
-            When you first visit our website, you&apos;ll see a cookie consent banner. You can:
+            Analytics and marketing tags are not currently enabled on this site, so no cookie banner
+            is shown and none of the cookies below are set. What follows describes how your choices
+            work once analytics is enabled here.
+          </p>
+          <p className="text-[14px] text-[#666] pb-[10px] leading-[24px] font-[500]">
+            Once it is, you will see a cookie consent banner on your first visit. You can:
           </p>
           <ul className="list-disc list-inside space-y-[4px] pb-[1em]">
             <li className="text-[14px] text-[#666] leading-[24px] font-[500]">

@@ -358,15 +358,18 @@ export default function PrivacyPolicy() {
           </p>
           <ul className="list-inside list-disc space-y-[4px] pb-[1em]">
             <li className="text-[14px] text-[#666] leading-[24px] font-[500]">
-              <strong>Consent:</strong> In the EEA, the UK, and Switzerland, Google&apos;s tags set
-              no cookies and read no identifiers until you accept through the cookie consent banner
-              — until then only aggregate, cookieless measurement takes place. Session recording
-              (Microsoft Clarity) and marketing (Meta Pixel) load only after you opt in. You can
-              withdraw consent at any time via the site&apos;s Cookie Preferences control (shown in
-              the footer once the consent banner is enabled); this site then deletes the tracking
-              cookies it set, Google&apos;s tags return to the cookieless state, and Clarity and the
-              Meta Pixel stop loading from your next page view. While this site remains a pre-launch
-              placeholder, no Google tags are loaded at all.
+              <strong>Consent:</strong> This site does not currently load Google Analytics,
+              Microsoft Clarity, or the Meta Pixel, and no cookie banner is shown; what follows
+              describes how consent works once analytics is enabled here. In the EEA, the UK, and
+              Switzerland, Google&apos;s tags set no cookies and read no identifiers until you
+              accept through the cookie consent banner — until then only aggregate, cookieless
+              measurement takes place. Session recording (Microsoft Clarity) and marketing (Meta
+              Pixel) load only after you opt in. You can withdraw consent at any time via the
+              site&apos;s Cookie Preferences control (shown in the footer once the consent banner is
+              enabled); this site then deletes the tracking cookies it set, Google&apos;s tags
+              return to the cookieless state, and Clarity and the Meta Pixel stop loading from your
+              next page view. While this site remains a pre-launch placeholder, no Google tags are
+              loaded at all.
             </li>
             <li className="text-[14px] text-[#666] leading-[24px] font-[500]">
               <strong>Legitimate interests:</strong> Operating, securing, and improving this website
