@@ -437,12 +437,12 @@ export default function PrivacyPolicy() {
             <strong>Opt-out preference signals (Global Privacy Control / Do Not Track).</strong>{' '}
             This site does not read or respond to the Global Privacy Control or Do Not Track browser
             signals. We do not sell or share personal information as defined by the CCPA/CPRA, so
-            there is nothing for those signals to opt out of. Analytics cookies are set
-            automatically for visitors outside the EEA, the UK, and Switzerland; any visitor can
-            turn them off at any time via the site&apos;s Cookie Preferences control (shown in the
-            footer once the consent banner is enabled), and we delete the cookies when you do.
-            Session recording (Microsoft Clarity) and marketing (Meta Pixel) never load without your
-            explicit opt-in, anywhere in the world.
+            there is nothing for those signals to opt out of. Analytics cookies are never set before
+            you accept, anywhere in the world; you can turn them off again at any time via the
+            site&apos;s Cookie Preferences control (shown in the footer once the consent banner is
+            enabled), and we delete the cookies when you do. Session recording (Microsoft Clarity)
+            and marketing (Meta Pixel) never load without your explicit opt-in, anywhere in the
+            world.
           </p>
           <p className="text-[14px] text-[#666] pb-[10px] leading-[24px] font-[500]">
             <strong>Exercising your rights.</strong> Submit a request to{' '}
