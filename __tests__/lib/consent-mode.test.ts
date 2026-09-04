@@ -51,10 +51,10 @@ describe('CONSENT_MODE_BOOTSTRAP', () => {
 describe('root layout consent bootstrap', () => {
   // The layout is a server component, so assert on its source. This fork's
   // layout wires NO Google tag today (pre-launch placeholder site): the
-  // bootstrap only sets the regional consent defaults on the dataLayer. If
-  // a <GoogleTagManager /> (or any Google tag) is ever added, it must be
-  // emitted AFTER the bootstrap script — extend these tests to assert the
-  // ordering when that happens.
+  // bootstrap only sets the global consent defaults on the dataLayer. If a
+  // <GoogleTagManager /> (or any Google tag) is ever added, it must be emitted
+  // AFTER the bootstrap script — extend these tests to assert the ordering when
+  // that happens.
   const layoutSource = readFileSync(join(process.cwd(), 'src/app/layout.tsx'), 'utf8')
 
   // Whitespace/quote-tolerant patterns: quote style, spacing, or import
