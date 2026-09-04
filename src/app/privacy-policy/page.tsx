@@ -340,18 +340,24 @@ export default function PrivacyPolicy() {
             handling of your personal data, and this section supplements the rest of this policy.
           </p>
           <p className="text-[14px] text-[#666] pb-[10px] leading-[24px] font-[500]">
-            <strong>How consent works regionally.</strong> We use Google Consent Mode. Whether the
-            permissive or the opt-in default applies to Google&apos;s tags is determined by Google
-            from your IP address at the time of your visit; IP geolocation is approximate. In the
-            EEA, the UK, and Switzerland, Google Analytics runs cookie-free until you accept.
-            (Switzerland is included because Google&apos;s consent defaults cover it; the data of
-            visitors in Switzerland is protected by Switzerland&apos;s Federal Act on Data
-            Protection (FADP) rather than the GDPR.) Everywhere else, including the United States,
-            analytics cookies are set from your first pageview. Our{' '}
-            <Link href="/cookie-policy" className="text-[#007bff] underline">
+            <strong>How consent works, in plain language.</strong> We use Google Consent Mode,
+            configured to withhold storage from every visitor until they accept — the same standard
+            worldwide, not only where the law demands it. Until you accept, Google&apos;s tags set
+            no cookies and read no identifiers, and analytics counts your visit only in an
+            aggregate, cookie-free way. There is no country in which measurement begins before you
+            choose. To be precise about what does happen: those tags still load and send a
+            cookie-free signal to Google before you decide, which is what lets us count visits
+            without identifying anyone; nothing is stored on your device and nothing follows you to
+            your next visit. You can change your mind at any time via the Cookie Preferences link in
+            the footer. See our{' '}
+            <Link href="/cookie-policy" className="text-[#0062CC] underline">
               Cookie Policy
             </Link>{' '}
-            describes this in detail.
+            for details. See our{' '}
+            <Link href="/cookie-policy" className="text-[#0062CC] underline">
+              Cookie Policy
+            </Link>{' '}
+            for details.
           </p>
           <p className="text-[14px] text-[#666] pb-[10px] leading-[24px] font-[500]">
             <strong>Legal bases.</strong> We process personal data only on these bases:
