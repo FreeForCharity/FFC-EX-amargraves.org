@@ -6,7 +6,7 @@ export const metadata: Metadata = {
 }
 
 // Update this date when the policy changes
-const LAST_UPDATED = 'December 7, 2025'
+const LAST_UPDATED = 'August 30, 2026'
 
 export default function CookiePolicy() {
   return (
@@ -35,6 +35,14 @@ export default function CookiePolicy() {
             Persistent cookies remain on your device after you close your browser, while session
             cookies are deleted when you close your browser.
           </p>
+          <p className="text-[14px] text-[#666] pb-[10px] leading-[24px] font-[500]">
+            <strong>What this site does today.</strong> Analytics and marketing tags are not
+            currently enabled here. This site loads no Google Analytics, no Microsoft Clarity and no
+            Meta Pixel; it sets none of the analytics or advertising cookies described below; and it
+            shows no cookie consent banner. Everything that follows describes how those cookies and
+            your choices about them would work once analytics is enabled here, so that turning it on
+            does not also require rewriting this page.
+          </p>
 
           {/* Section 2 */}
           <ol className="list-decimal list-inside pb-[1em]" start={2}>
@@ -52,10 +60,8 @@ export default function CookiePolicy() {
               Remember your cookie consent preferences
             </li>
             <li className="text-[14px] text-[#666] leading-[24px] font-[500]">
-              Understand how you use our website (with your consent)
-            </li>
-            <li className="text-[14px] text-[#666] leading-[24px] font-[500]">
-              Analyze website traffic and user behavior (with your consent)
+              Understand how you use our website and analyze traffic (only after you consent,
+              wherever you are — see Section 3.3)
             </li>
             <li className="text-[14px] text-[#666] leading-[24px] font-[500]">
               Improve our website and user experience
@@ -205,13 +211,44 @@ export default function CookiePolicy() {
 
           {/* 3.3 Analytics Cookies */}
           <p className="text-[14px] text-[#666] pb-[10px] leading-[24px] font-[500] mt-[1em]">
-            <strong>3.3 Analytics Cookies (Requires Consent)</strong>
+            <strong>3.3 Analytics Cookies</strong>
           </p>
           <p className="text-[14px] text-[#666] pb-[10px] leading-[24px] font-[500]">
             These cookies help us understand how visitors interact with our website by collecting
             and reporting information anonymously. We use this information to improve our website
             and user experience.
           </p>
+          <div className="bg-blue-50 border-l-4 border-blue-400 p-4 mb-4">
+            <p className="text-sm text-[#333] mb-2">
+              <strong>When we ask permission first</strong>
+            </p>
+            <p className="text-sm text-[#666] mb-2">
+              We apply the strictest setting to everyone: no matter where in the world you are,
+              Google Analytics sets{' '}
+              <strong>
+                no analytics or advertising cookies and collects no identifiers from your device
+              </strong>{' '}
+              until you accept. It still counts your visit in an aggregate, cookie-free way so we
+              know how many people used the site — that measurement cannot be tied back to you or to
+              your next visit.
+            </p>
+            <p className="text-sm text-[#666] mb-2">
+              There is no country in which analytics cookies are set before you choose. You can turn
+              them off at any time using the site&apos;s Cookie Preferences control (shown in the
+              footer once the consent banner is enabled), and we will delete the cookies listed
+              below when you do. While this site remains a pre-launch placeholder, no Google tags
+              are loaded at all, so no analytics cookies are set in any region.
+            </p>
+            <p className="text-sm text-[#666] mb-2">
+              The same rule applies to every visitor, so nothing depends on where you are.
+            </p>
+            <p className="text-sm text-[#666]">
+              <strong>Microsoft Clarity is different.</strong> It records how visitors move through
+              pages, so it runs <strong>only if you explicitly accept</strong> analytics cookies —
+              everywhere in the world, not just in Europe. Declining, or simply not answering the
+              banner, keeps it off.
+            </p>
+          </div>
 
           {/* Google Analytics */}
           <div className="bg-gray-50 p-4 rounded-lg mb-4">
@@ -312,7 +349,8 @@ export default function CookiePolicy() {
           <p className="text-[14px] text-[#666] pb-[10px] leading-[24px] font-[500]">
             These cookies are used to track visitors across websites. The intention is to display
             ads that are relevant and engaging for users and thereby more valuable for publishers
-            and advertisers.
+            and advertisers. The Meta Pixel loads only after you explicitly enable marketing cookies
+            through the consent banner — everywhere in the world, in every region.
           </p>
 
           {/* Meta Pixel */}
@@ -375,7 +413,12 @@ export default function CookiePolicy() {
             <strong>4.1 Cookie Consent Banner</strong>
           </p>
           <p className="text-[14px] text-[#666] pb-[10px] leading-[24px] font-[500]">
-            When you first visit our website, you&apos;ll see a cookie consent banner. You can:
+            Analytics and marketing tags are not currently enabled on this site, so no cookie banner
+            is shown and none of the cookies below are set. What follows describes how your choices
+            work once analytics is enabled here.
+          </p>
+          <p className="text-[14px] text-[#666] pb-[10px] leading-[24px] font-[500]">
+            Once it is, you will see a cookie consent banner on your first visit. You can:
           </p>
           <ul className="list-disc list-inside space-y-[4px] pb-[1em]">
             <li className="text-[14px] text-[#666] leading-[24px] font-[500]">
@@ -388,6 +431,11 @@ export default function CookiePolicy() {
               <strong>Customize:</strong> Choose which types of cookies you want to allow
             </li>
           </ul>
+          <p className="text-[14px] text-[#666] pb-[10px] leading-[24px] font-[500]">
+            You can change your mind at any time once the consent banner is enabled: the site&apos;s
+            Cookie Preferences control reopens these choices, and withdrawing consent deletes the
+            analytics and marketing cookies this site set.
+          </p>
 
           <p className="text-[14px] text-[#666] pb-[10px] leading-[24px] font-[500] mt-[1em]">
             <strong>4.2 Browser Settings</strong>
@@ -453,15 +501,19 @@ export default function CookiePolicy() {
           <ol className="list-decimal list-inside pb-[1em]" start={5}>
             <li>
               <h2 className="text-[26px] leading-[26px] font-[700] text-[#333] mb-[10px]">
-                <strong>Do Not Track Signals</strong>
+                <strong>Do Not Track and Global Privacy Control</strong>
               </h2>
             </li>
           </ol>
           <p className="text-[14px] text-[#666] pb-[10px] leading-[24px] font-[500]">
-            Some browsers have a &quot;Do Not Track&quot; feature that lets you tell websites that
-            you do not want to have your online activities tracked. At this time, we do not respond
-            to browser &quot;Do Not Track&quot; signals. However, you can control cookies through
-            our cookie consent banner.
+            This site does not read or respond to the &quot;Do Not Track&quot; or Global Privacy
+            Control browser signals. We do not sell or share personal information as defined by the
+            CCPA/CPRA, so there is nothing for those signals to opt out of. Analytics cookies stay
+            off until you opt in through the consent banner, wherever you are, and you can turn them
+            off again at any time via the site&apos;s Cookie Preferences control (shown in the
+            footer once the consent banner is enabled) — we delete the cookies when you do. Session
+            recording (Microsoft Clarity) and marketing (Meta Pixel) never load without your
+            explicit opt-in, anywhere in the world.
           </p>
 
           {/* Section 6 */}

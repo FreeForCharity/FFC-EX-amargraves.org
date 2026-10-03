@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import './globals.css'
+import { CONSENT_MODE_BOOTSTRAP } from '@/lib/consent-mode'
 
 export const metadata: Metadata = {
   metadataBase: new URL('https://amargraves.org'),
@@ -32,6 +33,17 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
+      <head>
+        {/* Google Consent Mode v2 defaults — MUST run before any Google tag. No
+            Google tag is wired into this layout today (the site is a pre-launch
+            placeholder), so this only sets the global consent defaults on the
+            dataLayer; if GTM/GA4 is enabled at launch, keep this script ABOVE
+            it. Denied worldwide: one unscoped default withholds analytics and
+            ad storage from every visitor until they opt in, so there is no
+            region left for Google to resolve from the visitor's IP address. See
+            src/lib/consent-mode.ts. */}
+        <script dangerouslySetInnerHTML={{ __html: CONSENT_MODE_BOOTSTRAP }} />
+      </head>
       <body suppressHydrationWarning={true}>{children}</body>
     </html>
   )
